@@ -1,0 +1,10 @@
+[project]
+name = "rag-improvements"
+version = "0.1.0"
+description = "Exploring methods to improve retrieval-augmented generation (RAG) on domain-specific knowledge"
+authors = [
+    { name = "Ramón Carreño", email = "ramcv98@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
