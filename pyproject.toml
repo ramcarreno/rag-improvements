@@ -7,4 +7,7 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "chromadb>=1.0.21",
+    "openai>=1.107.1",
+]
