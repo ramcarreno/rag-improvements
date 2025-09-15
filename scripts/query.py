@@ -1,4 +1,5 @@
 import argparse
+import pathlib
 
 import chromadb
 from openai import OpenAI
@@ -7,6 +8,9 @@ from models.baseline import BaselineRAG
 
 
 def main():
+    """
+    Run a user-given query for the selected RAG model.
+    """
     # Declare and parse all possible CLI arguments
     parser = argparse.ArgumentParser(
         description="Run a retrieval query and get an answer from an LLM."
@@ -56,7 +60,7 @@ def main():
     args = parser.parse_args()
 
     # Load ChromaDB client
-    client = chromadb.PersistentClient(path=args.index_path)
+    client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
     collection = client.get_collection(name=args.collection_name)
 
     # Load OpenAI client
@@ -77,8 +81,9 @@ def main():
         raise ValueError(f"Unexpected rag_model value: {args.rag_model}")
 
     # Run query and print the answer
-    rag_model.answer(query=args.query_text, k=args.k)
+    return rag_model.answer(query_text=args.query_text, k=args.k)
 
 
 if __name__ == '__main__':
-    main()
+    answer = main()
+    print(answer)
