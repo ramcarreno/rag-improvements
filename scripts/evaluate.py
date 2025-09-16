@@ -1,12 +1,54 @@
 import argparse
 import pathlib
+from collections import defaultdict
+from typing import Any
 
 import chromadb
+import numpy as np
 from datasets import load_dataset
 from openai import OpenAI
 from tqdm import tqdm
 
 from models.baseline import BaselineRAG
+
+
+def rr_at_k(retrieved_ids: list[str], gold_ids: set[str], k: int) -> float:
+    """
+    Calculate reciprocal rank of first relevant documents @k retrieval.
+
+    Args:
+        retrieved_ids: List of retrieved document ids.
+        gold_ids: Set of relevant document ids.
+        k: Number of top relevant documents.
+
+    Returns:
+        float: Reciprocal rank metric for a single query.
+    """
+    for rank, doc_id in enumerate(retrieved_ids[:k], start=1):
+        if doc_id in gold_ids:
+            return 1.0 / rank
+    return 0.0
+
+
+def ndcg_at_k(retrieved_ids: list[str], gold_ids: set[str], k: int) -> float:
+    """
+    Calculate normalized discounted cumulative gain @k with binary relevance.
+
+    Args:
+        retrieved_ids: List of retrieved document ids.
+        gold_ids: Set of relevant document ids.
+        k: Number of top relevant documents.
+
+    Returns:
+        float: nDCG metric for a single query.
+    """
+    dcg: float = 0.0
+    for i, doc_id in enumerate(retrieved_ids[:k], start=1):
+        if doc_id in gold_ids:
+            dcg += 1.0 / np.log2(i + 1)
+    ideal_rels: int = min(len(gold_ids), k)
+    idcg: float = sum(1.0 / np.log2(i + 1) for i in range(1, ideal_rels + 1))
+    return dcg / idcg if idcg > 0 else 0.0
 
 
 def main():
@@ -17,11 +59,12 @@ def main():
         description="Evaluate RAG model on test data."
     )
     parser.add_argument(
-        "--k",
+        "--k_values",
         type=int,
-        default=5,
-        help="Cutoff for evaluation metrics: number of top retrieved "
-             "documents considered."
+        nargs="+",
+        default=[5, 10],
+        help="List of k values for @k evaluation metrics: number of top "
+             "retrieved documents considered."
     )
     parser.add_argument(
         "--index_path",
@@ -94,16 +137,57 @@ def main():
 
     # Look for cached embeddings, compute in batch and save not cached
     queries: list[str] = [sample["query"] for sample in dataset]
-    query_embeddings: dict[str, list[float]] = rag_model.embed_queries(
-        queries=queries, batch_size=args.embedding_batch_size
+    rag_model.embed_queries(
+        queries=queries,
+        batch_size=args.embedding_batch_size
     )
 
+    # Init metrics accumulators
+    metrics_values = defaultdict(list)
+
     # Start evaluation loop
-    for sample in tqdm(dataset, desc="Evaluating"):
-        result = rag_model.retrieve(query_text=sample["query"], k=args.k)
-        retrieved_ids = result["ids"][0]
-        gold_ids = sample["gold_ids"]
-        # TODO: Metrics
+    for sample in tqdm(dataset, desc="Evaluating..."):
+        # Retrieve up to top maximum k value
+        result: dict[str, Any] = rag_model.retrieve(
+            query_text=sample["query"],
+            k=max(args.k_values)
+        )
+        # Extract retrievals & references for comparison
+        retrieved_ids: list[str] = result["ids"][0]
+        gold_ids: set[str] = set(sample["gold_ids"])
+
+        # Calculate metrics for each k value
+        for k in args.k_values:
+            top_k: set[str] = set(retrieved_ids[:k])
+            tp: int = len(top_k & gold_ids)
+
+            recall: float = tp / len(gold_ids) if gold_ids else 0.0
+            hit: float = 1.0 if tp > 0 else 0.0
+
+            # Store per-sample rank-unaware metrics
+            metrics_values[f"recall@{k}"].append(recall)
+            metrics_values[f"hit@{k}"].append(hit)
+
+            # Store per-sample ranked metrics
+            metrics_values[f"MRR@{k}"].append(
+                rr_at_k(retrieved_ids, gold_ids, k)
+            )
+            metrics_values[f"nDCG@{k}"].append(
+                ndcg_at_k(retrieved_ids, gold_ids, k)
+            )
+
+    # Compute mean aggregates of all metrics
+    final_results: dict[str, float] = {
+        metric: float(np.mean(values))
+        for metric, values in metrics_values.items()
+    }
+
+    # Pretty print final results
+    print(f"\nEvaluation results [**{args.rag_model}** model]:")
+    print(f"{'Metric':<15} | {'Value':>6}")
+    print("-" * 25)
+    for m, v in final_results.items():
+        print(f"{m:<15} | {v:>6.3f}")
 
 
 if __name__ == "__main__":
