@@ -3,33 +3,36 @@ from typing import Any
 from openai import OpenAI
 
 from models.base import RAGModel
-from models.utils import embed_query
 
 
 class BaselineRAG(RAGModel):
+    """
+    Baseline RAG model for retrieval.
+    """
     def __init__(self, retriever,
                  embeddings_model: str = "text-embedding-3-small",
-                 llm_model: str = "gpt-5-mini", client: OpenAI | None = None):
+                 llm_model: str | None = None, client: OpenAI | None = None):
         # Pass args up to RAGModel (base) class
         super().__init__(retriever, embeddings_model, llm_model, client)
 
     def retrieve(self, query_text: str, k: int) -> dict[str, Any]:
         # Embed query
-        query_embeddings = embed_query(query_text, self.embeddings_model,
-                                       self.client)
+        query_embeddings: list[float] = super().embed_query(query_text)
+
         # Look up on vector store
-        result = self.retriever.query(query_embeddings=[query_embeddings],
-                                      n_results=k)
+        result: dict[str, Any] = self.retriever.query(
+            query_embeddings=[query_embeddings], n_results=k
+        )
         return result
 
     def answer(self, query_text: str, k: int) -> str:
         # Return k most relevant documents
-        result = self.retrieve(query_text, k)
-        documents = result.get("documents", [[]])[0]
+        result: dict[str, Any] = self.retrieve(query_text, k)
+        documents: list[str] = result.get("documents", [[]])[0]
 
         # Build context and prompt from retrieval result
-        rag_context = "\n\n".join(documents)
-        user_prompt = (
+        rag_context: str = "\n\n".join(documents)
+        user_prompt: str = (
             f"Context:\n{rag_context}\n\n"
             f"Question: {query_text}\n\n"
             "Answer clearly and concisely based only on the context provided."

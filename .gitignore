@@ -220,3 +220,6 @@ data/
 
 # LLM logging
 logs/
+
+# Embeddings cache
+.emb_cache/

@@ -23,7 +23,7 @@ def main():
     )
     parser.add_argument(
         "--k",
-        type=str,
+        type=int,
         default=5,
         help="Number of documents to retrieve."
     )
@@ -55,7 +55,7 @@ def main():
         "--llm_model",
         type=str,
         default="gpt-5-mini",
-        help="Model to embed queries."
+        help="Model to generate text responses."
     )
     args = parser.parse_args()
 
@@ -84,6 +84,6 @@ def main():
     return rag_model.answer(query_text=args.query_text, k=args.k)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     answer = main()
     print(answer)
