@@ -1,5 +1,5 @@
-import json
 import pathlib
+import shelve
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -29,24 +29,53 @@ class RAGModel(ABC):
         self.llm_model = llm_model
         self.client = client or OpenAI()
 
-        self.cache_file = pathlib.Path(".emb_cache/query_embeddings.json")
-        self.cache_file.parent.mkdir(exist_ok=True)
-        self.embeddings_cache = self._load_embeddings_cache()
+        self.cache_file = ".emb_cache/query_embeddings.db"
+        pathlib.Path(".emb_cache").mkdir(exist_ok=True)
 
-    def _load_embeddings_cache(self) -> dict[str, list[float]]:
+
+    def embed_queries(self, queries: list[str], batch_size: int = 32) \
+            -> dict[str, list[float]]:
         """
-        Load embeddings cache file.
+        Embed multiple queries using cached embeddings in a shelve DB.
+        Only new queries call the embeddings API (in batches).
+
+        Args:
+            queries (list[str]): A list of text queries.
+            batch_size (int): Number of queries per batch.
 
         Returns:
-            dict[str, list[float]]: Dict loading embeddings from cache file.
+            dict[str, list[float]]: Query-embeddings key-value pairs.
         """
-        if self.cache_file.exists():
-            return json.loads(self.cache_file.read_text())
-        return {}
+        embeddings: dict[str, list[float]] = {}
+
+        with shelve.open(self.cache_file) as db:
+            # Filter queries not in embeddings cache (new)
+            to_embed: [list[str]] = [q for q in queries if q not in db]
+
+            # Batch embed new queries
+            if to_embed:
+                for i in tqdm(range(0, len(to_embed), batch_size),
+                              desc="[Generating embeddings...]"):
+                    batch: list[str] = to_embed[i:i + batch_size]
+                    response = self.client.embeddings.create(
+                        input=batch, model=self.embeddings_model
+                    )
+                    # Store new entries & format for direct usage
+                    for q, emb_data in zip(batch, response.data):
+                        emb_vec = np.array(emb_data.embedding, dtype=np.float32)
+                        db[q] = emb_vec
+                        embeddings[q] = emb_vec.tolist()
+
+            # Load all requested embeddings from cache
+            for q in queries:
+                if q not in embeddings:
+                    embeddings[q] = db[q].tolist()
+
+        return embeddings
 
     def embed_query(self, query_text: str) -> list[float]:
         """
-        Generate OpenAI embeddings for a RAG query.
+        Generate embeddings for a RAG query.
         Reads embeddings cache before generating.
 
         Args:
@@ -56,43 +85,6 @@ class RAGModel(ABC):
             list[float]: Text embedding vector.
         """
         return self.embed_queries([query_text])[query_text]
-
-    def embed_queries(self, queries: list[str], batch_size: int = 32) \
-            -> dict[str, list[float]]:
-        """
-        Embed a list of queries using cache if available, otherwise call
-        OpenAI API in batches to generate embeddings.
-
-        Args:
-            queries (list[str]): A list of text queries.
-            batch_size (int): Number of queries per batch.
-
-        Returns:
-            dict[str, list[float]]: Query-embeddings key-value pairs.
-        """
-        # Filter queries not found in embeddings cache
-        to_embed = [q for q in queries if q not in self.embeddings_cache]
-
-        # Batch embedding for new queries
-        if to_embed:
-            for i in tqdm(range(0, len(to_embed), batch_size),
-                          desc="[Generating embeddings...]"):
-                batch = to_embed[i:i+batch_size]
-                response = self.client.embeddings.create(
-                    input=batch, model=self.embeddings_model
-                )
-                # Store each new entry in cache dict
-                for q, emb_data in zip(batch, response.data):
-                    self.embeddings_cache[q] = np.array(
-                        emb_data.embedding,
-                        dtype=np.float32
-                    ).tolist()
-
-        # Save updated cache from dict
-        self.cache_file.write_text(json.dumps(self.embeddings_cache))
-
-        # Return only queried embeddings
-        return {q: self.embeddings_cache[q] for q in queries}
 
     @abstractmethod
     def retrieve(self, query_text: str, k: int) -> dict[str, Any]:

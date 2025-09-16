@@ -16,6 +16,9 @@ class BaselineRAG(RAGModel):
         super().__init__(retriever, embeddings_model, llm_model, client)
 
     def retrieve(self, query_text: str, k: int) -> dict[str, Any]:
+        """
+        Implements simple retrieval querying ChromaDB.
+        """
         # Embed query
         query_embeddings: list[float] = super().embed_query(query_text)
 
@@ -26,6 +29,9 @@ class BaselineRAG(RAGModel):
         return result
 
     def answer(self, query_text: str, k: int) -> str:
+        """
+        Answers the query at LLM level through a simple structured prompt.
+        """
         # Return k most relevant documents
         result: dict[str, Any] = self.retrieve(query_text, k)
         documents: list[str] = result.get("documents", [[]])[0]
