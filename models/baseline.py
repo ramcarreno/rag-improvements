@@ -20,7 +20,7 @@ class BaselineRAG(RAGModel):
         Implements simple retrieval querying ChromaDB.
         """
         # Embed query
-        query_embeddings: list[float] = super().embed_query(query_text)
+        query_embeddings: list[float] = self.embed_query(query_text)
 
         # Look up on vector store
         result: dict[str, Any] = self.retriever.query(

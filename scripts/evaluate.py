@@ -10,6 +10,7 @@ from openai import OpenAI
 from tqdm import tqdm
 
 from models.baseline import BaselineRAG
+from models.improved import ImprovedRAG
 
 
 def rr_at_k(retrieved_ids: list[str], gold_ids: set[str], k: int) -> float:
@@ -130,7 +131,11 @@ def main():
             client=client,
         )
     elif args.rag_model == "improved":
-        raise NotImplementedError
+        rag_model = ImprovedRAG(
+            retriever=collection,
+            embeddings_model=args.embeddings_model,
+            client=client,
+        )
     else:
         # This should never happen since argparse restricts the values
         raise ValueError(f"Unexpected rag_model value: {args.rag_model}")
@@ -182,13 +187,20 @@ def main():
         for metric, values in metrics_values.items()
     }
 
-    # Pretty print final results
-    print(f"\nEvaluation results [**{args.rag_model}** model]:")
+    # Pretty print final results, sorting metrics by k
+    print(f"\nEvaluation results for [{args.rag_model}] model:")
     print(f"{'Metric':<15} | {'Value':>6}")
-    print("-" * 25)
-    for m, v in final_results.items():
-        print(f"{m:<15} | {v:>6.3f}")
 
+    last_k: int = 0
+    for metric in sorted(
+            final_results.keys(),
+            key=lambda x: int(x.split("@")[1])
+    ):
+        k = int(metric.split("@")[1])
+        if k != last_k:
+            print("-" * 25)  # Divider between different k
+        last_k = k
+        print(f"{metric:<15} | {final_results[metric]:>6.3f}")
 
 if __name__ == "__main__":
     main()

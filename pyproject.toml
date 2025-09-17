@@ -11,4 +11,5 @@ dependencies = [
     "chromadb>=1.0.21",
     "datasets>=4.1.0",
     "openai>=1.107.1",
+    "scikit-learn>=1.7.2"
 ]
