@@ -47,7 +47,7 @@ cd rag-improvements
 ```
 
 2. Create a virtual environment, activate it and install the dependencies in `pyproject.toml`. This can be simply done 
-with:
+with (mind the actual venv activation depends on your system, CLI, etc):
 
 ```bash
 python -m venv .venv
@@ -196,7 +196,7 @@ For `k=10`:
 | Improved w/ simple PRF          | 0.269     | 0.485  | 0.279  | 0.218   |
 | Improved w/ PRF query expansion | 0.284     | 0.495  | 0.357  | 0.265   |
 
-For the simple PRF hyperparameters, I found best results setting `prf_m=3` for the first retrieval step and 
+For the simple PRF hyperparameters, I found best results setting `prf_m=5` for the first retrieval step and 
 `prf_weight=0.1` applied to the pseudo-relevant retrieved documents. In the case of query expansion `prf_m=10` and 
 TF-IDF top terms `prf_n_terms=50` for these results, although there might be better combinations. Remember these 
 parameters must be changed directly inside each method.
@@ -207,4 +207,6 @@ Work in progress...
 
 ## Other features
 
-Work in progress...
+After running a script, detailed logs are generated in the `logs/` directory. `query.log` captures input arguments, 
+execution progress, and any errors from the query script, while `evaluate.log` records arguments, metrics, execution 
+time, and exceptions from the evaluation script, providing a complete trace for debugging and reproducibility.

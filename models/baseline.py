@@ -30,6 +30,8 @@ class BaselineRAG(RAGModel):
         except Exception as e:
             self.logger.exception("Failed to retrieve documents!")
             raise
+        self.logger.info(f"Retrieved docs ids: {result['ids'][0]}")
+
         return result
 
     def answer(self, query_text: str, k: int) -> str:

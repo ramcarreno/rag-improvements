@@ -1,5 +1,7 @@
 import argparse
+import json
 import pathlib
+import sys
 from collections import defaultdict
 from typing import Any
 
@@ -55,9 +57,13 @@ def ndcg_at_k(retrieved_ids: list[str], gold_ids: set[str], k: int) -> float:
     return dcg / idcg if idcg > 0 else 0.0
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     """
-    Reproduce evaluation results for the selected RAG model.
+    Argument parser for CLI.
+
+    Returns:
+        argparse.ArgumentParser: The parser instance with the corresponding
+            arguments.
     """
     parser = argparse.ArgumentParser(
         description="Evaluate RAG model on test data."
@@ -98,6 +104,7 @@ def main():
         "--rag_model",
         type=str,
         choices=["baseline", "improved"],
+        required=True,
         help="RAG model to use."
     )
     parser.add_argument(
@@ -113,7 +120,15 @@ def main():
         help="Number of queries to embed at once when calling the OpenAI "
              "embeddings API."
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """
+    Reproduce evaluation results for the selected RAG model.
+    """
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     # Arguments correctly parsed - start logging
     logger.info(f"{'*' * 10} RAG EVALUATION {'*' * 10}")
@@ -121,11 +136,21 @@ def main():
     logger.info(f"Evaluating for k values: {args.k_values}")
 
     # Load ChromaDB client
-    client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
-    collection = client.get_collection(name=args.collection_name)
+    try:
+        client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
+        collection = client.get_collection(name=args.collection_name)
+    except Exception as e:
+        logger.exception("Something went wrong when loading the ChromaDB "
+                         "index.")
+        raise
 
     # Load OpenAI client
-    client = OpenAI()
+    try:
+        client = OpenAI()
+    except Exception as e:
+        logger.exception("Something went wrong when loading the OpenAI "
+                         "client.")
+        raise
 
     # Load evaluation dataset (set to BRIGHT) and subset/split
     dataset = load_dataset("xlangai/BRIGHT", args.hf_subset,
@@ -154,21 +179,30 @@ def main():
 
     # Look for cached embeddings, compute in batch and save not cached
     queries: list[str] = [sample["query"] for sample in dataset]
-    rag_model.embed_queries(
-        queries=queries,
-        batch_size=args.embedding_batch_size
-    )
+    try:
+        rag_model.embed_queries(
+            queries=queries,
+            batch_size=args.embedding_batch_size
+        )
+    except Exception as e:
+        logger.error("Evaluation failed while caching embeddings!")
+        sys.exit(1)
 
     # Init metrics accumulators
     metrics_values = defaultdict(list)
 
     # Start evaluation loop
-    for sample in tqdm(dataset, desc="Evaluating..."):
+    for idx, sample in enumerate(tqdm(dataset, desc="Evaluating...")):
         # Retrieve up to top maximum k value
-        result: dict[str, Any] = rag_model.retrieve(
-            query_text=sample["query"],
-            k=max(args.k_values)
-        )
+        try:
+            result: dict[str, Any] = rag_model.retrieve(
+                query_text=sample["query"],
+                k=max(args.k_values)
+            )
+        except Exception as e:
+            logger.error(f"Evaluation failed at sample {idx}!")
+            sys.exit(1)
+
         # Extract retrievals & references for comparison
         retrieved_ids: list[str] = result["ids"][0]
         gold_ids: set[str] = set(sample["gold_ids"])
@@ -214,6 +248,10 @@ def main():
         last_k = k
         print(f"{metric:<15} | {final_results[metric]:>6.3f}")
 
+    # Log results in logging file as well
+    for metric, value in final_results.items():
+        logger.info(f"METRIC | model={args.rag_model} | {metric}={value:.3f}")
+    logger.info("Evaluation complete!")
 
 if __name__ == "__main__":
     main()

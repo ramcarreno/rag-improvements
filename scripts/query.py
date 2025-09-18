@@ -1,5 +1,7 @@
 import argparse
 import pathlib
+import sys
+import time
 
 import chromadb
 from openai import OpenAI
@@ -11,9 +13,13 @@ from models.baseline import BaselineRAG
 from models.improved import ImprovedRAG
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     """
-    Run a user-given query for the selected RAG model.
+    Argument parser for CLI.
+
+    Returns:
+        argparse.ArgumentParser: The parser instance with the corresponding
+            arguments.
     """
     # Declare and parse all possible CLI arguments
     parser = argparse.ArgumentParser(
@@ -61,7 +67,18 @@ def main():
         default="gpt-5-mini",
         help="Model to generate text responses."
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> str:
+    """
+    Run a user-given query for the selected RAG model.
+
+    Returns:
+        str: The LLM output of the query.
+    """
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     # Arguments correctly parsed - start logging
     logger.info(f"{'*' * 10} RAG QUERY {'*' * 10}")
@@ -70,11 +87,21 @@ def main():
     logger.info(f"Retrieving top k={args.k} documents")
 
     # Load ChromaDB client
-    client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
-    collection = client.get_collection(name=args.collection_name)
+    try:
+        client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
+        collection = client.get_collection(name=args.collection_name)
+    except Exception as e:
+        logger.exception("Something went wrong when loading the ChromaDB "
+                         "index.")
+        raise
 
     # Load OpenAI client
-    client = OpenAI()
+    try:
+        client = OpenAI()
+    except Exception as e:
+        logger.exception("Something went wrong when loading the OpenAI "
+                         "client.")
+        raise
 
     # Instantiate RAG model
     if args.rag_model == "baseline":
@@ -88,6 +115,7 @@ def main():
         rag_model = ImprovedRAG(
             retriever=collection,
             embeddings_model=args.embeddings_model,
+            llm_model=args.llm_model,
             client=client,
         )
     else:
@@ -103,5 +131,16 @@ def main():
 
 
 if __name__ == "__main__":
-    answer = main()
-    print(answer)
+    # Set up timer
+    start_time = time.perf_counter()
+    try:
+        answer = main()
+        end_time = time.perf_counter()
+        elapsed = end_time - start_time
+
+        print(answer)
+        logger.info(f"Answer: [{answer}]")
+        logger.info(f"Answer generated in {elapsed:.2f} seconds")
+    except Exception as e:
+        logger.error("Query failed!")
+        sys.exit(1)

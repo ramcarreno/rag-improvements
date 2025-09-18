@@ -32,12 +32,12 @@ class ImprovedRAG(RAGModel):
                 n_results=max(k, prf_m)
             )
         except Exception as e:
-            self.logger.exception("Failed to retrieve documents!")
+            self.logger.exception("[PRF first pass] Failed to retrieve "
+                                  "documents!")
             raise
         top_docs: list[str] = first_pass["documents"][0][:prf_m]
 
         # Extract top TF-IDF terms from top m docs and expand query with them
-        # TODO: check for ValueError
         try:
             vectorizer = TfidfVectorizer(
                 stop_words="english",
@@ -46,7 +46,8 @@ class ImprovedRAG(RAGModel):
             vectorizer.fit(top_docs)
             top_terms = vectorizer.get_feature_names_out()
         except ValueError as e:
-            self.logger.exception("Empty vocabulary: check your query")
+            self.logger.exception("TF-IDF vectorizer failed while extracting "
+                                  "top terms")
             raise
         expanded_query_text: str = query_text + " " + " ".join(top_terms)
 
@@ -61,8 +62,11 @@ class ImprovedRAG(RAGModel):
                 n_results=k
             )
         except Exception as e:
-            self.logger.exception("Failed to retrieve documents!")
+            self.logger.exception("[PRF second pass] Failed to retrieve "
+                                  "documents!")
             raise
+        self.logger.info(f"Retrieved docs ids: {second_pass['ids'][0]}")
+
         return second_pass
 
     def retrieve_with_simple_prf(self, query_text: str, k: int) \
@@ -71,7 +75,7 @@ class ImprovedRAG(RAGModel):
         Retrieval with simple pseudo-relevance feedback (PRF).
         """
         # PRF hyperparameters
-        prf_m: int = 3  # pseudo-relevant docs
+        prf_m: int = 5  # pseudo-relevant docs
         prf_weight: float = 0.1  # weight of m docs
 
         # Embed query & first retrieval, expose embeddings
@@ -83,7 +87,8 @@ class ImprovedRAG(RAGModel):
                 include=["documents", "embeddings"]
             )
         except Exception as e:
-            self.logger.exception("Failed to retrieve documents!")
+            self.logger.exception("[PRF first pass] Failed to retrieve "
+                                  "documents!")
             raise
 
         # Collect embeddings of top m docs and average them
@@ -101,8 +106,11 @@ class ImprovedRAG(RAGModel):
                 n_results=k
             )
         except Exception as e:
-            self.logger.exception("Failed to retrieve documents!")
+            self.logger.exception("[PRF second pass] Failed to retrieve "
+                                  "documents!")
             raise
+        self.logger.info(f"Retrieved docs ids: {second_pass['ids'][0]}")
+
         return second_pass
 
     def answer(self, query_text: str, k: int) -> str:

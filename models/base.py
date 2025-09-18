@@ -65,9 +65,9 @@ class RAGModel(ABC):
                             input=batch, model=self.embeddings_model
                         )
                     except Exception as e:
-                        self.logger.exception(
-                            "Failed to create embeddings for batch of size "
-                            "%d!", len(batch))
+                        self.logger.exception(f"Failed to create embeddings "
+                                              f"for batch of size "
+                                              f"{len(batch)}!")
                         raise
                     # Store new entries & format for direct usage
                     for q, emb_data in zip(batch, response.data):
