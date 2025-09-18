@@ -1,5 +1,4 @@
 import argparse
-import json
 import pathlib
 import sys
 from collections import defaultdict
@@ -11,11 +10,11 @@ from datasets import load_dataset
 from openai import OpenAI
 from tqdm import tqdm
 
-from utils.logger import get_logger
-logger = get_logger("eval_logger", pathlib.Path("logs/evaluate.log"))
-
 from models.baseline import BaselineRAG
 from models.improved import ImprovedRAG
+
+from utils.logger import get_logger
+logger = get_logger("eval_logger", pathlib.Path("logs/evaluate.log"))
 
 
 def rr_at_k(retrieved_ids: list[str], gold_ids: set[str], k: int) -> float:
@@ -139,7 +138,7 @@ def main(argv: list[str] | None = None) -> None:
     try:
         client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
         collection = client.get_collection(name=args.collection_name)
-    except Exception as e:
+    except Exception:
         logger.exception("Something went wrong when loading the ChromaDB "
                          "index.")
         raise
@@ -147,7 +146,7 @@ def main(argv: list[str] | None = None) -> None:
     # Load OpenAI client
     try:
         client = OpenAI()
-    except Exception as e:
+    except Exception:
         logger.exception("Something went wrong when loading the OpenAI "
                          "client.")
         raise
@@ -184,7 +183,7 @@ def main(argv: list[str] | None = None) -> None:
             queries=queries,
             batch_size=args.embedding_batch_size
         )
-    except Exception as e:
+    except Exception:
         logger.error("Evaluation failed while caching embeddings!")
         sys.exit(1)
 
@@ -199,7 +198,7 @@ def main(argv: list[str] | None = None) -> None:
                 query_text=sample["query"],
                 k=max(args.k_values)
             )
-        except Exception as e:
+        except Exception:
             logger.error(f"Evaluation failed at sample {idx}!")
             sys.exit(1)
 

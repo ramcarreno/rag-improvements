@@ -64,7 +64,7 @@ class RAGModel(ABC):
                         response = self.client.embeddings.create(
                             input=batch, model=self.embeddings_model
                         )
-                    except Exception as e:
+                    except Exception:
                         self.logger.exception(f"Failed to create embeddings "
                                               f"for batch of size "
                                               f"{len(batch)}!")

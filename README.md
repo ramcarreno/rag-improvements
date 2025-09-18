@@ -23,7 +23,7 @@ The document collection comes from a pre-indexed ChromaDB database built on a su
 [BRIGHT](https://huggingface.co/datasets/xlangai/BRIGHT), specifically the `biology` split. For evaluation, the 
 `example` subset of the same split is used.  
 
-The repository is organized into three subpackages:  
+The repository is organized into four subpackages:  
 - **`models/`** contains the implemented RAG systems:  
   - `BaselineRAG`: a basic reference implementation.  
   - `ImprovedRAG`: a variant with pseudo-relevance feedback and query expansion.  
@@ -31,6 +31,7 @@ The repository is organized into three subpackages:
   - `query.py`: runs direct RAG queries.  
   - `evaluation.py`: computes and prints evaluation results (see section below).
 - **`utils/`** contains misc utilities, currently only the logging system.
+- **`tests/`** contains simple unit tests checking CLI arguments and retrieval.
 
 ## Installation
 
@@ -203,7 +204,12 @@ parameters must be changed directly inside each method.
 
 ## Testing
 
-Work in progress...
+Simply run tests with:
+
+```bash
+pytest
+```
+Or if you used uv, `uv run pytest`.
 
 ## Other features
 

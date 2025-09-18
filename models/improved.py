@@ -11,7 +11,7 @@ class ImprovedRAG(RAGModel):
     """
     Improved RAG model using PRF techniques.
     """
-    def __init__(self, retriever,
+    def __init__(self, retriever: Any,
                  embeddings_model: str = "text-embedding-3-small",
                  llm_model: str | None = None,
                  client: OpenAI | None = None):
@@ -31,7 +31,7 @@ class ImprovedRAG(RAGModel):
                 query_embeddings=[self.embed_query(query_text)],
                 n_results=max(k, prf_m)
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("[PRF first pass] Failed to retrieve "
                                   "documents!")
             raise
@@ -45,7 +45,7 @@ class ImprovedRAG(RAGModel):
             )
             vectorizer.fit(top_docs)
             top_terms = vectorizer.get_feature_names_out()
-        except ValueError as e:
+        except ValueError:
             self.logger.exception("TF-IDF vectorizer failed while extracting "
                                   "top terms")
             raise
@@ -61,7 +61,7 @@ class ImprovedRAG(RAGModel):
                 query_embeddings=[query_exp_emb.tolist()],
                 n_results=k
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("[PRF second pass] Failed to retrieve "
                                   "documents!")
             raise
@@ -86,7 +86,7 @@ class ImprovedRAG(RAGModel):
                 n_results=max(k, prf_m),
                 include=["documents", "embeddings"]
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("[PRF first pass] Failed to retrieve "
                                   "documents!")
             raise
@@ -105,7 +105,7 @@ class ImprovedRAG(RAGModel):
                 query_embeddings=[query_prf_emb.tolist()],
                 n_results=k
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("[PRF second pass] Failed to retrieve "
                                   "documents!")
             raise
@@ -142,7 +142,7 @@ class ImprovedRAG(RAGModel):
                     {"role": "user", "content": user_prompt}
                 ]
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("Failed to generate an LLM answer!")
             raise
 

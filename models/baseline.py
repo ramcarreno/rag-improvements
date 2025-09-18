@@ -9,7 +9,7 @@ class BaselineRAG(RAGModel):
     """
     Baseline RAG model for retrieval.
     """
-    def __init__(self, retriever,
+    def __init__(self, retriever: Any,
                  embeddings_model: str = "text-embedding-3-small",
                  llm_model: str | None = None, client: OpenAI | None = None):
         # Pass args up to RAGModel (base) class
@@ -27,7 +27,7 @@ class BaselineRAG(RAGModel):
             result: dict[str, Any] = self.retriever.query(
                 query_embeddings=[query_embeddings], n_results=k
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("Failed to retrieve documents!")
             raise
         self.logger.info(f"Retrieved docs ids: {result['ids'][0]}")
@@ -61,7 +61,7 @@ class BaselineRAG(RAGModel):
                     {"role": "user", "content": user_prompt}
                 ]
             )
-        except Exception as e:
+        except Exception:
             self.logger.exception("Failed to generate an LLM answer!")
             raise
 

@@ -6,11 +6,11 @@ import time
 import chromadb
 from openai import OpenAI
 
-from utils.logger import get_logger
-logger = get_logger("query_logger", pathlib.Path("logs/query.log"))
-
 from models.baseline import BaselineRAG
 from models.improved import ImprovedRAG
+
+from utils.logger import get_logger
+logger = get_logger("query_logger", pathlib.Path("logs/query.log"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> str:
     try:
         client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
         collection = client.get_collection(name=args.collection_name)
-    except Exception as e:
+    except Exception:
         logger.exception("Something went wrong when loading the ChromaDB "
                          "index.")
         raise
@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> str:
     # Load OpenAI client
     try:
         client = OpenAI()
-    except Exception as e:
+    except Exception:
         logger.exception("Something went wrong when loading the OpenAI "
                          "client.")
         raise
@@ -141,6 +141,6 @@ if __name__ == "__main__":
         print(answer)
         logger.info(f"Answer: [{answer}]")
         logger.info(f"Answer generated in {elapsed:.2f} seconds")
-    except Exception as e:
+    except Exception:
         logger.error("Query failed!")
         sys.exit(1)
