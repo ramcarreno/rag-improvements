@@ -23,9 +23,13 @@ class BaselineRAG(RAGModel):
         query_embeddings: list[float] = self.embed_query(query_text)
 
         # Look up on vector store
-        result: dict[str, Any] = self.retriever.query(
-            query_embeddings=[query_embeddings], n_results=k
-        )
+        try:
+            result: dict[str, Any] = self.retriever.query(
+                query_embeddings=[query_embeddings], n_results=k
+            )
+        except Exception as e:
+            self.logger.exception("Failed to retrieve documents!")
+            raise
         return result
 
     def answer(self, query_text: str, k: int) -> str:
@@ -45,14 +49,20 @@ class BaselineRAG(RAGModel):
         )
 
         # Call OpenAI API and return text response
-        response = self.client.responses.create(
-            model=self.llm_model,
-            input=[
-                {"role": "system", "content": "You are a helpful assistant "
-                                              "answering biology questions."},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
+        try:
+            response = self.client.responses.create(
+                model=self.llm_model,
+                input=[
+                    {"role": "system",
+                     "content": "You are a helpful assistant answering "
+                                "biology questions."},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+        except Exception as e:
+            self.logger.exception("Failed to generate an LLM answer!")
+            raise
+
         return response.output_text
 
 

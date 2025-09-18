@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import shelve
 from abc import ABC, abstractmethod
@@ -14,7 +15,8 @@ class RAGModel(ABC):
     """
     def __init__(self, retriever: Any,
                  embeddings_model: str = "text-embedding-3-small",
-                 llm_model: str | None = None, client: OpenAI | None = None):
+                 llm_model: str | None = None, client: OpenAI | None = None,
+                 logger: logging.Logger = None):
         """
         Args:
             retriever (Any): Retriever for RAG models - returns documents when
@@ -29,6 +31,7 @@ class RAGModel(ABC):
         self.llm_model = llm_model
         self.client = client or OpenAI()
 
+        self.logger = logger
         self.cache_file = ".emb_cache/query_embeddings.db"
         pathlib.Path(".emb_cache").mkdir(exist_ok=True)
 
@@ -50,19 +53,27 @@ class RAGModel(ABC):
 
         with shelve.open(self.cache_file) as db:
             # Filter queries not in embeddings cache (new)
-            to_embed: [list[str]] = [q for q in queries if q not in db]
+            to_embed: list[str] = [q for q in queries if q not in db]
 
             # Batch embed new queries
             if to_embed:
                 for i in tqdm(range(0, len(to_embed), batch_size),
                               desc="[Generating embeddings...]"):
                     batch: list[str] = to_embed[i:i + batch_size]
-                    response = self.client.embeddings.create(
-                        input=batch, model=self.embeddings_model
-                    )
+                    try:
+                        response = self.client.embeddings.create(
+                            input=batch, model=self.embeddings_model
+                        )
+                    except Exception as e:
+                        self.logger.exception(
+                            "Failed to create embeddings for batch of size "
+                            "%d!", len(batch))
+                        raise
                     # Store new entries & format for direct usage
                     for q, emb_data in zip(batch, response.data):
-                        emb_vec = np.array(emb_data.embedding, dtype=np.float32)
+                        emb_vec = np.array(
+                            emb_data.embedding, dtype=np.float32
+                        )
                         db[q] = emb_vec
                         embeddings[q] = emb_vec.tolist()
 

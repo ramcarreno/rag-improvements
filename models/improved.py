@@ -26,19 +26,28 @@ class ImprovedRAG(RAGModel):
         prf_n_terms: int = 50  # n of tf-idf terms
 
         # Embed query & first retrieval, extract docs
-        first_pass: dict[str, Any] = self.retriever.query(
-            query_embeddings=[self.embed_query(query_text)],
-            n_results=max(k, prf_m)
-        )
+        try:
+            first_pass: dict[str, Any] = self.retriever.query(
+                query_embeddings=[self.embed_query(query_text)],
+                n_results=max(k, prf_m)
+            )
+        except Exception as e:
+            self.logger.exception("Failed to retrieve documents!")
+            raise
         top_docs: list[str] = first_pass["documents"][0][:prf_m]
 
         # Extract top TF-IDF terms from top m docs and expand query with them
-        vectorizer = TfidfVectorizer(
-            stop_words="english",
-            max_features=prf_n_terms
-        )
-        vectorizer.fit(top_docs)
-        top_terms = vectorizer.get_feature_names_out()
+        # TODO: check for ValueError
+        try:
+            vectorizer = TfidfVectorizer(
+                stop_words="english",
+                max_features=prf_n_terms
+            )
+            vectorizer.fit(top_docs)
+            top_terms = vectorizer.get_feature_names_out()
+        except ValueError as e:
+            self.logger.exception("Empty vocabulary: check your query")
+            raise
         expanded_query_text: str = query_text + " " + " ".join(top_terms)
 
         # Embed expanded query
@@ -46,10 +55,14 @@ class ImprovedRAG(RAGModel):
         query_exp_emb = query_exp_emb / np.linalg.norm(query_exp_emb)
 
         # Retrieve using this expanded embedding
-        second_pass: dict[str, Any] = self.retriever.query(
-            query_embeddings=[query_exp_emb.tolist()],
-            n_results=k
-        )
+        try:
+            second_pass: dict[str, Any] = self.retriever.query(
+                query_embeddings=[query_exp_emb.tolist()],
+                n_results=k
+            )
+        except Exception as e:
+            self.logger.exception("Failed to retrieve documents!")
+            raise
         return second_pass
 
     def retrieve_with_simple_prf(self, query_text: str, k: int) \
@@ -63,11 +76,15 @@ class ImprovedRAG(RAGModel):
 
         # Embed query & first retrieval, expose embeddings
         query_embeddings: list[float] = self.embed_query(query_text)
-        first_pass: dict[str, Any] = self.retriever.query(
-            query_embeddings=[query_embeddings],
-            n_results=max(k, prf_m),
-            include=["documents", "embeddings"]
-        )
+        try:
+            first_pass: dict[str, Any] = self.retriever.query(
+                query_embeddings=[query_embeddings],
+                n_results=max(k, prf_m),
+                include=["documents", "embeddings"]
+            )
+        except Exception as e:
+            self.logger.exception("Failed to retrieve documents!")
+            raise
 
         # Collect embeddings of top m docs and average them
         feedback_emb = np.mean(np.stack(first_pass["embeddings"][0]), axis=0)
@@ -78,10 +95,14 @@ class ImprovedRAG(RAGModel):
         query_prf_emb = query_prf_emb / np.linalg.norm(query_prf_emb)
 
         # Retrieve using informed embedding
-        second_pass: dict[str, Any] = self.retriever.query(
-            query_embeddings=[query_prf_emb.tolist()],
-            n_results=k
-        )
+        try:
+            second_pass: dict[str, Any] = self.retriever.query(
+                query_embeddings=[query_prf_emb.tolist()],
+                n_results=k
+            )
+        except Exception as e:
+            self.logger.exception("Failed to retrieve documents!")
+            raise
         return second_pass
 
     def answer(self, query_text: str, k: int) -> str:
@@ -104,12 +125,17 @@ class ImprovedRAG(RAGModel):
         )
 
         # Call OpenAI API and return text response
-        response = self.client.responses.create(
-            model=self.llm_model,
-            input=[
-                {"role": "system", "content": "You are a helpful assistant "
-                                              "answering biology questions."},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
+        try:
+            response = self.client.responses.create(
+                model=self.llm_model,
+                input=[
+                    {"role": "system", "content": "You are a helpful assistant "
+                                                  "answering biology questions."},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+        except Exception as e:
+            self.logger.exception("Failed to generate an LLM answer!")
+            raise
+
         return response.output_text

@@ -23,13 +23,14 @@ The document collection comes from a pre-indexed ChromaDB database built on a su
 [BRIGHT](https://huggingface.co/datasets/xlangai/BRIGHT), specifically the `biology` split. For evaluation, the 
 `example` subset of the same split is used.  
 
-The repository is organized into two subpackages:  
+The repository is organized into three subpackages:  
 - **`models/`** contains the implemented RAG systems:  
   - `BaselineRAG`: a basic reference implementation.  
   - `ImprovedRAG`: a variant with pseudo-relevance feedback and query expansion.  
 - **`scripts/`** contains scripts runnable from a CLI:  
   - `query.py`: runs direct RAG queries.  
-  - `evaluation.py`: computes and prints evaluation results (see section below).  
+  - `evaluation.py`: computes and prints evaluation results (see section below).
+- **`utils/`** contains misc utilities, currently only the logging system.
 
 ## Installation
 
@@ -45,7 +46,7 @@ git clone https://github.com/ramcarreno/rag-improvements.git
 cd rag-improvements
 ```
 
-3. Create a virtual environment, activate it and install the dependencies in `pyproject.toml`. This can be simply done 
+2. Create a virtual environment, activate it and install the dependencies in `pyproject.toml`. This can be simply done 
 with:
 
 ```bash
@@ -59,7 +60,7 @@ Alternatively, you can use **uv**, so you don't need to worry about Python virtu
 uv sync
 ```
 
-4. Export your `OPENAI_API_KEY` as an environment variable and extract the ChromaDB index in a known location, 
+3. Export your `OPENAI_API_KEY` as an environment variable and extract the ChromaDB index in a known location, 
 preferably this same directory.
 
 ## Modeling approach
@@ -90,8 +91,8 @@ the `m` or `n` parameters are adjusted as a new textual query is created. Consid
 embeddings caching mechanism that minimizes those calls ;)
 
 A notable advantage of PRF is that it doesn't require slow and costly LLM paraphrasing, changing indexes, or modifying 
-chunking. With cached embeddings, querying the entire testing set can take roughly the same as using the baseline model
-(around 4 seconds in my machine!)
+chunking. With cached embeddings, querying the entire test set can take roughly the same as using the baseline model
+(around 3 seconds in my machine!)
 
 ### Notes on implementation
 
@@ -204,6 +205,6 @@ parameters must be changed directly inside each method.
 
 Work in progress...
 
-# Other features
+## Other features
 
 Work in progress...

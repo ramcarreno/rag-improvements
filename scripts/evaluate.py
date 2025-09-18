@@ -9,6 +9,9 @@ from datasets import load_dataset
 from openai import OpenAI
 from tqdm import tqdm
 
+from utils.logger import get_logger
+logger = get_logger("eval_logger", pathlib.Path("logs/evaluate.log"))
+
 from models.baseline import BaselineRAG
 from models.improved import ImprovedRAG
 
@@ -112,6 +115,11 @@ def main():
     )
     args = parser.parse_args()
 
+    # Arguments correctly parsed - start logging
+    logger.info(f"{'*' * 10} RAG EVALUATION {'*' * 10}")
+    logger.info(f"Using model: [{args.rag_model}]")
+    logger.info(f"Evaluating for k values: {args.k_values}")
+
     # Load ChromaDB client
     client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
     collection = client.get_collection(name=args.collection_name)
@@ -138,7 +146,11 @@ def main():
         )
     else:
         # This should never happen since argparse restricts the values
+        logger.error(f"Unexpected rag_model value: {args.rag_model}")
         raise ValueError(f"Unexpected rag_model value: {args.rag_model}")
+
+    # Propagate logger to RAG model
+    rag_model.logger = logger
 
     # Look for cached embeddings, compute in batch and save not cached
     queries: list[str] = [sample["query"] for sample in dataset]
@@ -201,6 +213,7 @@ def main():
             print("-" * 25)  # Divider between different k
         last_k = k
         print(f"{metric:<15} | {final_results[metric]:>6.3f}")
+
 
 if __name__ == "__main__":
     main()

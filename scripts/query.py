@@ -4,7 +4,11 @@ import pathlib
 import chromadb
 from openai import OpenAI
 
+from utils.logger import get_logger
+logger = get_logger("query_logger", pathlib.Path("logs/query.log"))
+
 from models.baseline import BaselineRAG
+from models.improved import ImprovedRAG
 
 
 def main():
@@ -59,6 +63,12 @@ def main():
     )
     args = parser.parse_args()
 
+    # Arguments correctly parsed - start logging
+    logger.info(f"{'*' * 10} RAG QUERY {'*' * 10}")
+    logger.info(f"Using model: [{args.rag_model}]")
+    logger.info(f"Query: [{args.query_text}]")
+    logger.info(f"Retrieving top k={args.k} documents")
+
     # Load ChromaDB client
     client = chromadb.PersistentClient(path=pathlib.Path(args.index_path))
     collection = client.get_collection(name=args.collection_name)
@@ -75,10 +85,18 @@ def main():
             client=client,
         )
     elif args.rag_model == "improved":
-        raise NotImplementedError
+        rag_model = ImprovedRAG(
+            retriever=collection,
+            embeddings_model=args.embeddings_model,
+            client=client,
+        )
     else:
         # This should never happen since argparse restricts the values
+        logger.error(f"Unexpected rag_model value: {args.rag_model}")
         raise ValueError(f"Unexpected rag_model value: {args.rag_model}")
+
+    # Propagate logger to RAG model
+    rag_model.logger = logger
 
     # Run query and print the answer
     return rag_model.answer(query_text=args.query_text, k=args.k)
