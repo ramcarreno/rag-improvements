@@ -48,10 +48,11 @@ cd rag-improvements
 ```
 
 2. Create a virtual environment, activate it and install the dependencies in `pyproject.toml`. This can be simply done 
-with (mind the actual venv activation depends on your system, IDE, etc):
+with (mind the actual venv activation may depend on your system, IDE, etc):
 
 ```bash
 python -m venv .venv
+source .venv/bin/activate
 pip install .
 ```
 
@@ -193,7 +194,7 @@ For `k=10`:
 
 | Model                           | Recall@10 | Hit@10    | MRR@10    | nDCG@10   |
 |---------------------------------|-----------|-----------|-----------|-----------|
-| Baseline                        | 0.267     | **0.495** | 0.276     | 0.213     |
+| Baseline                        | 0.270     | **0.495** | 0.276     | 0.213     |
 | Improved w/ simple PRF          | 0.269     | 0.485     | 0.279     | 0.218     |
 | Improved w/ PRF query expansion | **0.284** | **0.495** | **0.357** | **0.265** |
 
