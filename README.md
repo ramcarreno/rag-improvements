@@ -48,7 +48,7 @@ cd rag-improvements
 ```
 
 2. Create a virtual environment, activate it and install the dependencies in `pyproject.toml`. This can be simply done 
-with (mind the actual venv activation depends on your system, CLI, etc):
+with (mind the actual venv activation depends on your system, IDE, etc):
 
 ```bash
 python -m venv .venv
@@ -183,19 +183,19 @@ The original [BRIGHT](https://huggingface.co/datasets/xlangai/BRIGHT) dataset in
 
 For `k=5`:
 
-| Model                           | Recall@5 | Hit@5 | MRR@5 | nDCG@5 |
-|---------------------------------|----------|-------|-------|--------|
-| Baseline                        | 0.175    | 0.408 | 0.265 | 0.185  |
-| Improved w/ simple PRF          | 0.192    | 0.408 | 0.270 | 0.197  |
-| Improved w/ PRF query expansion | 0.233    | 0.466 | 0.353 | 0.256  |
+| Model                           | Recall@5  | Hit@5     | MRR@5     | nDCG@5    |
+|---------------------------------|-----------|-----------|-----------|-----------|
+| Baseline                        | 0.175     | 0.408     | 0.265     | 0.185     |
+| Improved w/ simple PRF          | 0.192     | 0.408     | 0.270     | 0.197     |
+| Improved w/ PRF query expansion | **0.233** | **0.466** | **0.353** | **0.256** |
 
 For `k=10`:
 
-| Model                           | Recall@10 | Hit@10 | MRR@10 | nDCG@10 |
-|---------------------------------|-----------|--------|--------|---------|
-| Baseline                        | 0.267     | 0.495  | 0.276  | 0.213   |
-| Improved w/ simple PRF          | 0.269     | 0.485  | 0.279  | 0.218   |
-| Improved w/ PRF query expansion | 0.284     | 0.495  | 0.357  | 0.265   |
+| Model                           | Recall@10 | Hit@10    | MRR@10    | nDCG@10   |
+|---------------------------------|-----------|-----------|-----------|-----------|
+| Baseline                        | 0.267     | **0.495** | 0.276     | 0.213     |
+| Improved w/ simple PRF          | 0.269     | 0.485     | 0.279     | 0.218     |
+| Improved w/ PRF query expansion | **0.284** | **0.495** | **0.357** | **0.265** |
 
 For the simple PRF hyperparameters, I found best results setting `prf_m=5` for the first retrieval step and 
 `prf_weight=0.1` applied to the pseudo-relevant retrieved documents. In the case of query expansion `prf_m=10` and 

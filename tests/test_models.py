@@ -16,8 +16,11 @@ def test_retrieval():
     }
     mock_retriever.query.return_value = fake_result
 
-    # Instantiate BaselineRAG with the mock retriever
-    rag_model = BaselineRAG(retriever=mock_retriever)
+    # Mock OpenAI client
+    mock_client = MagicMock()
+
+    # Instantiate BaselineRAG with the mock retriever and client
+    rag_model = BaselineRAG(retriever=mock_retriever, client=mock_client)
 
     # Set logger from ABC to avoid exception
     mock_logger = MagicMock()
